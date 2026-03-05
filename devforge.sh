@@ -6,7 +6,8 @@
 #  Usage: sudo ./devforge.sh
 # ============================================================
 
-set -euo pipefail
+set -uo pipefail
+# Note: -e removed intentionally so script never stops on single failures
 
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
 CYAN='\033[0;36m'; MAGENTA='\033[0;35m'; BOLD='\033[1m'; RESET='\033[0m'
@@ -75,11 +76,13 @@ install_gnome() {
   systemctl enable gdm
   systemctl enable NetworkManager
   systemctl enable bluetooth
-  sudo -u "$USERNAME" yay -S --noconfirm \
+  for pkg in \
     gnome-shell-extension-blur-my-shell \
     papirus-icon-theme \
     catppuccin-gtk-theme-mocha \
-    bibata-cursor-theme 2>/dev/null || warn "Some AUR theme packages failed"
+    bibata-cursor-theme; do
+    sudo -u "$USERNAME" yay -S --noconfirm "$pkg" 2>/dev/null || warn "Skipping AUR: $pkg"
+  done
   log "GNOME installed"
 }
 
@@ -92,15 +95,16 @@ install_languages() {
     php composer jdk17-openjdk kotlin
 
   info "Python tools..."
-  sudo -u "$USERNAME" pip install --user --quiet \
-    uv black ruff mypy pytest httpx rich 2>/dev/null || true
+  sudo -u "$USERNAME" pip install --user --quiet --break-system-packages \
+    uv black ruff mypy pytest httpx rich 2>/dev/null || warn "Some Python tools failed — skipping"
 
   info "Node.js tools..."
-  npm install -g pnpm yarn typescript ts-node nodemon prettier eslint 2>/dev/null || true
+  npm install -g pnpm yarn typescript ts-node nodemon prettier eslint 2>/dev/null || warn "Some Node tools failed — skipping"
 
   info "Rust..."
   sudo -u "$USERNAME" bash -c \
-    'curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --quiet'
+    'curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --quiet' \
+    2>/dev/null || warn "Rust install failed — run manually later"
 
   log "Languages installed"
 }
@@ -129,12 +133,17 @@ FLUTTERINSTALL
 # ── Android Studio & SDK ────────────────────────────────────
 install_android() {
   banner "Android Studio & SDK"
-  pacman -S --noconfirm --needed jdk17-openjdk lib32-libstdc++5
-  usermod -aG kvm "$USERNAME"
+
+  # Install packages one by one so one failure doesn't stop everything
+  for pkg in jdk17-openjdk lib32-gcc-libs lib32-glibc; do
+    pacman -S --noconfirm --needed "$pkg" 2>/dev/null || warn "Skipping $pkg — not found"
+  done
+
+  usermod -aG kvm "$USERNAME" 2>/dev/null || true
   modprobe kvm_intel 2>/dev/null || modprobe kvm_amd 2>/dev/null || warn "KVM needs BIOS enable"
 
   info "Installing Android Studio from AUR..."
-  sudo -u "$USERNAME" yay -S --noconfirm android-studio
+  sudo -u "$USERNAME" yay -S --noconfirm android-studio 2>/dev/null || warn "Android Studio AUR failed — install manually later"
 
   info "Installing Android SDK..."
   ANDROID_SDK="$HOME_DIR/Android/Sdk"
