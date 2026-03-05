@@ -5,10 +5,11 @@
 #  Run as normal user (NOT root): ./cyberrice.sh
 # ============================================================
 
-set -euo pipefail
+set -uo pipefail
+# Note: -e removed intentionally so script never stops on single failures
 
 CYAN='\033[0;36m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
-MAGENTA='\033[0;35m'; RED='\033[0;31m'; BOLD='\033[1m'; RESET='\033[0m'
+RED='\033[0;31m'; BOLD='\033[1m'; RESET='\033[0m'
 NEON='\033[38;5;51m'
 
 USERNAME="${USER}"
@@ -18,8 +19,9 @@ log()    { echo -e "${GREEN}[✔]${RESET} $*"; }
 warn()   { echo -e "${YELLOW}[!]${RESET} $*"; }
 info()   { echo -e "${CYAN}[→]${RESET} $*"; }
 banner() {
+  local msg="  ⚡ $*"
   echo -e "\n${BOLD}${NEON}╔═══════════════════════════════════════════════╗${RESET}"
-  echo -e "${BOLD}${NEON}║  ⚡ $*$(printf '%*s' $((43 - ${#*})) '')║${RESET}"
+  echo -e "${BOLD}${NEON}║${msg}$(printf '%*s' $((47 - ${#msg})) '')║${RESET}"
   echo -e "${BOLD}${NEON}╚═══════════════════════════════════════════════╝${RESET}\n"
 }
 
@@ -57,7 +59,7 @@ install_packages() {
     unzip wget curl git
 
   # AUR packages
-  yay -S --noconfirm \
+  for pkg in \
     oh-my-posh-bin \
     gnome-shell-extension-aylurs-gtk-shell \
     wpgtk-git \
@@ -66,7 +68,9 @@ install_packages() {
     cbonsai \
     tty-clock \
     python-pywal \
-    hollywood 2>/dev/null || warn "Some AUR packages failed — continuing"
+    hollywood; do
+    yay -S --noconfirm "$pkg" 2>/dev/null || warn "Skipping AUR: $pkg"
+  done
 
   log "Packages installed"
 }
@@ -538,11 +542,6 @@ setup_gdm() {
   sudo cp "$HOME_DIR/Pictures/wallpapers/cyberforge.png" \
     /usr/share/pixmaps/cyberforge/login.png 2>/dev/null || warn "Copy wallpaper failed"
 
-  # GDM CSS override
-  GDM_CSS="/usr/share/gnome-shell/gnome-shell-theme.gresource"
-  WORK_DIR="/tmp/gdm-theme"
-  mkdir -p "$WORK_DIR"
-
   # Create custom GDM theme via gnome-shell CSS
   sudo tee /usr/share/gnome-shell/extensions/cyberforge-gdm.css > /dev/null << 'GDMCSS' 2>/dev/null || true
 #lockDialogGroup {
@@ -756,6 +755,7 @@ Categories=Development;
 FLUTTER
 
   # Rofi dev menu script
+  mkdir -p "$HOME_DIR/.local/bin"
   cat > "$HOME_DIR/.local/bin/devmenu" << 'DEVMENU'
 #!/usr/bin/env bash
 # CyberForge Dev App Menu
