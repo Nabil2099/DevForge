@@ -31,6 +31,17 @@ banner() {
 install_packages() {
   banner "Installing SmartShell Packages"
 
+  # Install yay if not present
+  if ! command -v yay &>/dev/null; then
+    info "Installing yay AUR helper..."
+    sudo pacman -S --noconfirm --needed git base-devel
+    cd /tmp && rm -rf yay-bin
+    git clone https://aur.archlinux.org/yay-bin.git yay-bin
+    cd yay-bin && makepkg -si --noconfirm
+    cd ~ && rm -rf /tmp/yay-bin
+    log "yay installed"
+  fi
+
   sudo pacman -S --noconfirm --needed \
     zsh \
     fzf \

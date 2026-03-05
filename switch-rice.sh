@@ -73,6 +73,17 @@ undo_cyberrice() {
 install_deps() {
   banner "Installing AllBlue Dependencies"
 
+  # Install yay if not present
+  if ! command -v yay &>/dev/null; then
+    info "Installing yay AUR helper..."
+    sudo pacman -S --noconfirm --needed git base-devel
+    cd /tmp && rm -rf yay-bin
+    git clone https://aur.archlinux.org/yay-bin.git yay-bin
+    cd yay-bin && makepkg -si --noconfirm
+    cd ~ && rm -rf /tmp/yay-bin
+    log "yay installed"
+  fi
+
   # Hyprland and wayland stack
   info "Installing Hyprland stack..."
   sudo pacman -S --noconfirm --needed \

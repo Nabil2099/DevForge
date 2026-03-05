@@ -5,7 +5,8 @@
 #  Run as normal user (NOT root): ./cyberrice.sh
 # ============================================================
 
-set -euo pipefail
+set -uo pipefail
+# Note: -e removed so script never stops on single failures
 
 CYAN='\033[0;36m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'
 MAGENTA='\033[0;35m'; RED='\033[0;31m'; BOLD='\033[1m'; RESET='\033[0m'
@@ -36,6 +37,17 @@ banner() {
 # ── Install AUR packages ─────────────────────────────────────
 install_packages() {
   banner "Installing Rice Packages"
+
+  # Install yay if not present
+  if ! command -v yay &>/dev/null; then
+    info "Installing yay AUR helper..."
+    sudo pacman -S --noconfirm --needed git base-devel
+    cd /tmp && rm -rf yay-bin
+    git clone https://aur.archlinux.org/yay-bin.git yay-bin
+    cd yay-bin && makepkg -si --noconfirm
+    cd ~ && rm -rf /tmp/yay-bin
+    log "yay installed"
+  fi
 
   # Core rice tools
   sudo pacman -S --noconfirm --needed \
